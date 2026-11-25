@@ -1,0 +1,63 @@
+:root {
+  --bg: #f4f6f9; --card: #fff; --text: #1d2433; --muted: #6b7587;
+  --primary: #2563eb; --danger: #dc2626; --border: #e2e6ee; --ok: #15803d;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+a { color: var(--primary); text-decoration: none; }
+h2 { margin: 16px 0; } h3 { margin: 0 0 12px; }
+
+.topbar { display: flex; align-items: center; gap: 24px; padding: 12px 24px; background: var(--card); border-bottom: 1px solid var(--border); }
+.brand { color: var(--primary); }
+.topbar nav { display: flex; gap: 16px; flex: 1; }
+.topbar nav a { padding: 6px 4px; color: var(--muted); font-weight: 500; }
+.topbar nav a.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+.who { display: flex; align-items: center; gap: 12px; }
+
+.content { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 20px; max-width: 1200px; margin: 0 auto; padding: 8px 24px 40px; }
+@media (max-width: 900px) { .content { grid-template-columns: 1fr; } }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 18px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.form-grid h3, .wide { grid-column: 1 / -1; }
+@media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+input, select, textarea { padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; color: var(--text); background: #fff; }
+input:focus, select:focus, textarea:focus { outline: 2px solid #bfd3ff; border-color: var(--primary); }
+
+.btn { display: inline-block; padding: 9px 16px; border: 0; border-radius: 6px; background: var(--primary); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--primary); border: 1px solid var(--border); }
+.btn.danger { background: var(--danger); }
+.btn.small { padding: 5px 10px; font-size: 13px; }
+.actions { display: flex; gap: 10px; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); font-size: 14px; }
+th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+.inline-form { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.inline-form select { flex: 1; min-width: 180px; }
+
+.details { display: grid; grid-template-columns: 140px 1fr; gap: 8px 12px; margin: 0; }
+.details dt { color: var(--muted); font-weight: 600; } .details dd { margin: 0; }
+
+.notice { padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; font-size: 14px; }
+.notice.error { background: #fde8e8; color: #9b1c1c; }
+.notice.success { background: #e3f6e8; color: var(--ok); }
+.muted { color: var(--muted); font-size: 14px; }
+
+.apilog { background: #111827; color: #e5e7eb; border-radius: 10px; padding: 14px; align-self: start; position: sticky; top: 16px; margin-top: 16px; }
+.apilog h4 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
+.logrow { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 0; }
+.logrow code { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.method { font-weight: 700; font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #374151; }
+.method.GET { background: #1d4ed8; } .method.POST { background: #15803d; }
+.method.PUT { background: #b45309; } .method.DELETE { background: #b91c1c; }
+.ok { color: #4ade80; } .bad { color: #f87171; }
+
+.auth-page { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+.auth-card { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 14px; margin: 0; }
+.auth-card h2 { margin: 0; }
