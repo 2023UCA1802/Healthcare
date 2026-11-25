@@ -151,3 +151,93 @@ class RefreshAndLogoutTests(BaseAPITestCase):
 
     def test_logout_from_untrusted_origin_is_rejected(self):
         self.assertEqual(self.client.post("/api/auth/logout/", HTTP_ORIGIN="https://evil.example").status_code, 403)
+
+
+class AccessTokenRevocationTests(BaseAPITestCase):
+    """Logging out must kill the session's access tokens immediately."""
+
+    def setUp(self):
+        super().setUp()
+        self.user = self.make_user()
+
+    def login(self):
+        client = APIClient()
+        res = client.post("/api/auth/login/", {"email": "asha@example.com", "password": PASSWORD}, format="json")
+        self.assertEqual(res.status_code, 200)
+        return client, res.json()["access"]
+
+    @staticmethod
+    def get_patients(access):
+        return APIClient().get("/api/patients/", HTTP_AUTHORIZATION=f"Bearer {access}")
+
+    def test_access_token_stops_working_immediately_after_logout(self):
+        client, access = self.login()
+        self.assertEqual(self.get_patients(access).status_code, 200)
+        self.assertEqual(client.post("/api/auth/logout/", HTTP_ORIGIN=ORIGIN).status_code, 204)
+        res = self.get_patients(access)
+        self.assertEqual(res.status_code, 401)
+        self.assertIn("revoked", str(res.json()).lower())
+
+    def test_logout_only_ends_that_session_other_devices_keep_working(self):
+        phone, phone_access = self.login()
+        _laptop, laptop_access = self.login()
+        phone.post("/api/auth/logout/", HTTP_ORIGIN=ORIGIN)
+        self.assertEqual(self.get_patients(phone_access).status_code, 401)
+        self.assertEqual(self.get_patients(laptop_access).status_code, 200)
+
+    def test_all_tokens_of_the_session_die_including_ones_issued_by_refresh(self):
+        client, first_access = self.login()
+        second_access = client.post("/api/auth/token/refresh/", HTTP_ORIGIN=ORIGIN).json()["access"]
+        self.assertEqual(self.get_patients(first_access).status_code, 200)  # still same live session
+        self.assertEqual(self.get_patients(second_access).status_code, 200)
+        client.post("/api/auth/logout/", HTTP_ORIGIN=ORIGIN)
+        self.assertEqual(self.get_patients(first_access).status_code, 401)
+        self.assertEqual(self.get_patients(second_access).status_code, 401)
+
+    def test_logout_with_only_a_bearer_token_and_no_cookie_still_revokes(self):
+        _client, access = self.login()
+        res = APIClient().post("/api/auth/logout/", HTTP_AUTHORIZATION=f"Bearer {access}", HTTP_ORIGIN=ORIGIN)
+        self.assertEqual(res.status_code, 204)
+        self.assertEqual(self.get_patients(access).status_code, 401)
+
+    def test_logging_in_again_after_logout_gives_a_working_new_session(self):
+        client, old_access = self.login()
+        client.post("/api/auth/logout/", HTTP_ORIGIN=ORIGIN)
+        _client2, new_access = self.login()
+        self.assertEqual(self.get_patients(old_access).status_code, 401)
+        self.assertEqual(self.get_patients(new_access).status_code, 200)
+
+    def test_cannot_refresh_a_revoked_session(self):
+        from accounts.models import RevokedSession
+        client, _access = self.login()
+        # revoke the session without going through logout (e.g. admin action)
+        from rest_framework_simplejwt.tokens import RefreshToken
+        sid = RefreshToken(client.cookies[COOKIE].value)["sid"]
+        from django.utils import timezone
+        RevokedSession.objects.create(sid=sid, expires_at=timezone.now() + settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"])
+        self.assertEqual(client.post("/api/auth/token/refresh/", HTTP_ORIGIN=ORIGIN).status_code, 401)
+
+    def test_token_without_a_session_id_is_rejected(self):
+        from rest_framework_simplejwt.tokens import AccessToken
+        legacy = str(AccessToken.for_user(self.user))  # no `sid` claim
+        self.assertEqual(self.get_patients(legacy).status_code, 401)
+
+    def test_deactivated_user_token_is_rejected(self):
+        _client, access = self.login()
+        self.user.is_active = False
+        self.user.save()
+        self.assertEqual(self.get_patients(access).status_code, 401)
+
+    def test_purge_command_removes_only_expired_rows(self):
+        from datetime import timedelta
+        from io import StringIO
+
+        from django.core.management import call_command
+        from django.utils import timezone
+
+        from accounts.models import RevokedSession
+        RevokedSession.objects.create(sid="a" * 32, expires_at=timezone.now() - timedelta(days=1))
+        RevokedSession.objects.create(sid="b" * 32, expires_at=timezone.now() + timedelta(days=1))
+        out = StringIO()
+        call_command("flushrevokedsessions", stdout=out)
+        self.assertEqual(list(RevokedSession.objects.values_list("sid", flat=True)), ["b" * 32])

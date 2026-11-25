@@ -92,7 +92,13 @@ export function refreshSession() {
 
 export async function logoutRequest() {
   try {
-    await fetch(`${BASE}/auth/logout/`, { method: "POST", credentials: "include" });
+    // The cookie identifies the session; the Bearer header is a second way to
+    // identify it so the access token is revoked even if the cookie is missing.
+    await fetch(`${BASE}/auth/logout/`, {
+      method: "POST",
+      credentials: "include",
+      headers: tokens.access ? { Authorization: `Bearer ${tokens.access}` } : {},
+    });
   } catch { /* offline: cookie will expire; token also expires server-side */ }
   tokens.clear();
 }

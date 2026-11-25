@@ -18,9 +18,10 @@ class RegisterSerializer(serializers.Serializer):
         return value
 
     def validate_email(self, value):
-        # NOTE: deliberately no "already exists" check here, so this endpoint
-        # cannot be used to discover which emails are registered (see RegisterView).
-        return value.strip().lower()
+        value = value.strip().lower()
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
 
     def validate(self, attrs):
         candidate = User(email=attrs["email"], name=attrs["name"])

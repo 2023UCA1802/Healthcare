@@ -54,3 +54,21 @@ class User(AbstractUser):
 
     def get_short_name(self):
         return self.name
+
+
+class RevokedSession(models.Model):
+    """Sessions (one per login) that were logged out.
+
+    Every token issued at login carries a random session id (`sid`). Access tokens
+    are otherwise stateless, so this small denylist is how logout kills them
+    immediately instead of waiting for them to expire.
+    """
+
+    sid = models.CharField(max_length=32, unique=True)  # unique -> indexed lookup
+    revoked_at = models.DateTimeField(auto_now_add=True)
+    # After this moment no token of the session can still be valid, so the row
+    # can be purged (python manage.py flushrevokedsessions).
+    expires_at = models.DateTimeField(db_index=True)
+
+    def __str__(self):
+        return f"revoked session {self.sid[:8]}..."
